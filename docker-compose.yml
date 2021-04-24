@@ -1,0 +1,75 @@
+version: "3.7"
+services:
+    api:
+        build:
+          context: apis
+          dockerfile: Dockerfile
+        container_name: fastapi
+        image: vishal/fastapi-python
+        restart: unless-stopped
+        environment:
+          APP_ENV: "prod"
+          APP_PORT: 8080
+          MONGODB_DATABASE: chatdb
+          MONGODB_USERNAME: chatuser
+          MONGODB_PASSWORD: chat123
+          MONGODB_HOSTNAME: mongodb
+        volumes:
+        - appdata:/var/www
+        depends_on:
+          - mongodb
+        networks:
+          - frontend
+          - backend
+
+    mongodb:
+      image: mongo:4.0.8
+      container_name: mongodb
+      restart: unless-stopped
+      command: mongod --auth
+      environment:
+        MONGO_INITDB_ROOT_USERNAME: chatuser
+        MONGO_INITDB_ROOT_PASSWORD: chat123
+        MONGO_INITDB_DATABASE: chatdb
+        MONGODB_DATA_DIR: /data/db
+        MONGODB_LOG_DIR: /dev/null
+      volumes:
+      - mongodbdata:/data/db
+      networks:
+        - backend
+
+    webserver:
+      build:
+        context: nginx
+        dockerfile: Dockerfile
+      image: vishal/webserver:latest
+      container_name: webserver
+      restart: unless-stopped
+      environment:
+        APP_ENV: "prod"
+        APP_NAME: "webserver"
+        APP_DEBUG: "true"
+        SERVICE_NAME: "webserver"
+      ports:
+        - 80:80
+        - 443:443
+      volumes:
+      - nginxdata:/var/log/nginx
+      depends_on:
+        - api
+      networks:
+        - frontend
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+volumes:
+  mongodbdata:
+    driver: local
+  appdata:
+    driver: local
+  nginxdata:
+    driver: local
